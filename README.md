@@ -20,6 +20,13 @@ After installing `uv`, run this command to install all the packages:
 uv sync
 ```
 
+Or if you prefer other env packages like Conda or Venv, below is an example of venv:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
 ## How to download dataset
 
 Make sure you have `data/` folder
