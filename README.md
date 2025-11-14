@@ -1,7 +1,7 @@
 # Deep Learning Final Project
 
 ## Env setup
-We're using `uv`
+We're using `uv` (recommended)
 
 For MacOS, run:
 ```bash
