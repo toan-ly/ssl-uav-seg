@@ -26,7 +26,7 @@ def make_loaders(
     batch_size=4,
     patch_size=512,
     num_workers=2,
-    cache_rate=1.0,
+    cache_rate=0.0,
 ):
     train_dir = Path(data_root) / 'uavid_train'
     val_dir = Path(data_root) / 'uavid_val'

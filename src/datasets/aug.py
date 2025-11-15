@@ -1,51 +1,52 @@
 from monai.transforms import (
-    Compose, LoadImaged, EnsureChannelFirstd, ScaleIntensityRanged,
-    RandCropByPosNegLabeld, RandFlipd, RandAffined, EnsureTyped, Lambdad,
+    Compose, LoadImageD, EnsureChannelFirstD, ScaleIntensityRangeD,
+    RandCropByPosNegLabelD, RandFlipD, RandAffineD, EnsureTypeD, LambdaD,
+    RandSpatialCropSamplesD
 )
-from .uavid_labels import rgb_to_id
+from .uavid_labels import rgb_to_cls
 
 def train_transforms(patch_size=512):
     keys = ['image', 'label']
     mode = ('bilinear', 'nearest')
 
     return Compose([
-        LoadImaged(keys=keys),
-        EnsureChannelFirstd(keys=keys),
-        Lambdad(keys=['label'], func=lambda x: rgb_to_id(x)),
+        LoadImageD(keys=keys),
+        EnsureChannelFirstD(keys=keys),
+        LambdaD(keys=['label'], func=rgb_to_cls),
 
-        ScaleIntensityRanged(
+        ScaleIntensityRangeD(
             keys=['image'],
             a_min=0.0, a_max=255.0,
             b_min=0.0, b_max=1.0,
             clip=True,
         ),
-
-        RandFlipd(keys=keys, prob=0.5, spatial_axis=0), # horizontal flip
-
-        RandCropByPosNegLabeld(
+        
+        RandSpatialCropSamplesD(
             keys=keys,
-            label_key='label',
-            spatial_size=(patch_size, patch_size),
-            pos=1,
-            neg=1,
-            num_samples=4,
+            roi_size=[patch_size, patch_size],
+            num_samples=8,
+            random_size=False,
         ),
 
-        EnsureTyped(keys=keys),
+        RandFlipD(keys=keys, prob=0.5, spatial_axis=0), # horizontal flip
+
+     
+
+        EnsureTypeD(keys=keys),
     ])
 
 def val_transforms():
     keys = ['image', 'label']
 
     return Compose([
-        LoadImaged(keys=keys),
-        EnsureChannelFirstd(keys=keys),
-        Lambdad(keys=['label'], func=lambda x: rgb_to_id(x)),
-        ScaleIntensityRanged(
+        LoadImageD(keys=keys),
+        EnsureChannelFirstD(keys=keys),
+        LambdaD(keys=['label'], func=rgb_to_cls),
+        ScaleIntensityRangeD(
             keys=['image'],
             a_min=0.0, a_max=255.0,
             b_min=0.0, b_max=1.0,
             clip=True,
         ),
-        EnsureTyped(keys=keys),
+        EnsureTypeD(keys=keys),
     ])
