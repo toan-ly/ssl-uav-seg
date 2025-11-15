@@ -1,7 +1,8 @@
 from monai.transforms import (
     Compose, LoadImaged, EnsureChannelFirstd, ScaleIntensityRanged,
-    RandCropByPosNegLabeld, RandFlipd, RandAffined, EnsureTyped
+    RandCropByPosNegLabeld, RandFlipd, RandAffined, EnsureTyped, Lambdad,
 )
+from .uavid_labels import rgb_to_id
 
 def train_transforms(patch_size=512):
     keys = ['image', 'label']
@@ -10,6 +11,8 @@ def train_transforms(patch_size=512):
     return Compose([
         LoadImaged(keys=keys),
         EnsureChannelFirstd(keys=keys),
+        Lambdad(keys=['label'], func=lambda x: rgb_to_id(x)),
+
         ScaleIntensityRanged(
             keys=['image'],
             a_min=0.0, a_max=255.0,
@@ -37,6 +40,7 @@ def val_transforms():
     return Compose([
         LoadImaged(keys=keys),
         EnsureChannelFirstd(keys=keys),
+        Lambdad(keys=['label'], func=lambda x: rgb_to_id(x)),
         ScaleIntensityRanged(
             keys=['image'],
             a_min=0.0, a_max=255.0,
