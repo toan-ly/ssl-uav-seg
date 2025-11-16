@@ -55,7 +55,7 @@ def make_loaders(
         val_ds = Dataset(data=val_items, transform=val_t)
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    val_loader = DataLoader(val_ds, batch_size=1, shuffle=False, num_workers=num_workers)
 
     return train_loader, val_loader
 

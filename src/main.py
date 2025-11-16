@@ -19,6 +19,8 @@ model = create_unet(
     encoder_weights="imagenet",
 ).to(DEVICE)
 
+n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print(f'Number of trainable parameters: {n_params}')
 
 train_loader, val_loader = make_loaders(
     DATA_DIR, 
@@ -35,9 +37,9 @@ trainer = Trainer(
     device=DEVICE,
     loss='dicece',
     optimizer_name='adamw',
-    lr=1e-4,
+    lr=1e-3,
     early_stopping=True,
-    patience=10,
+    patience=5,
     scheduler='cosine',
     cls_weights=None,
     num_classes=NUM_CLASSES,

@@ -11,6 +11,7 @@ from monai.losses import (
 )
 from .utils import *
 from .metric import *
+from monai.inferers import sliding_window_inference
 
 class Trainer:
     def __init__(
@@ -122,7 +123,14 @@ class Trainer:
             imgs = batch['image'].to(self.device) # [B, C, H, W]
             masks = batch['label'].to(self.device) # [B, 1, H, W]
 
-            logits = self.model(imgs) # [B, num_cls, H, W] 
+            logits = sliding_window_inference(
+                imgs,
+                roi_size=(256, 256),
+                sw_batch_size=4,
+                predictor=self.model,
+                overlap=0.5,
+            )
+            
             loss = self.criterion(logits, masks)
 
             epoch_loss += loss.item() * imgs.size(0)
