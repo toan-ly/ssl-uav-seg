@@ -24,7 +24,7 @@ def train_transforms(patch_size=512):
         RandSpatialCropSamplesD(
             keys=keys,
             roi_size=[patch_size, patch_size],
-            num_samples=8,
+            num_samples=4,
             random_size=False,
         ),
 

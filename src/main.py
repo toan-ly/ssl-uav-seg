@@ -23,7 +23,7 @@ model = create_unet(
 train_loader, val_loader = make_loaders(
     DATA_DIR, 
     cache_rate=0.0,
-    batch_size=8,
+    batch_size=4,
     patch_size=512,
     num_workers=0,
 )

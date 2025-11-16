@@ -88,7 +88,7 @@ class Trainer:
 
             epoch_loss += loss.item() * imgs.size(0)
 
-            preds = torch.argmax(logits, dim=1) 
+            preds = torch.argmax(logits, dim=1, keepdim=True) 
 
             for i in range(masks.shape[0]):
                 self.train_evaluator.add_batch(
@@ -127,7 +127,7 @@ class Trainer:
 
             epoch_loss += loss.item() * imgs.size(0)
 
-            preds = torch.argmax(logits, dim=1)
+            preds = torch.argmax(logits, dim=1, keepdim=True) 
             for i in range(masks.shape[0]):
                 self.val_evaluator.add_batch(
                     masks[i].cpu().numpy(), 
