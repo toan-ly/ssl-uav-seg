@@ -24,10 +24,10 @@ print(f'Number of trainable parameters: {n_params}')
 
 train_loader, val_loader = make_loaders(
     DATA_DIR, 
-    cache_rate=0.0,
+    cache_rate=0.4,
     batch_size=4,
     patch_size=512,
-    num_workers=4,
+    num_workers=2,
 )
 
 trainer = Trainer(
@@ -37,7 +37,7 @@ trainer = Trainer(
     device=DEVICE,
     loss='dicece',
     optimizer_name='adamw',
-    lr=1e-3,
+    lr=1e-4,
     early_stopping=True,
     patience=5,
     scheduler='cosine',
