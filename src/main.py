@@ -24,7 +24,7 @@ print(f'Number of trainable parameters: {n_params}')
 
 train_loader, val_loader = make_loaders(
     DATA_DIR, 
-    cache_rate=1.0,
+    cache_rate=0.0,
     batch_size=4,
     patch_size=512,
     num_workers=4,

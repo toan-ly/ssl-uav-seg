@@ -83,3 +83,8 @@ def get_weather_transforms(
         )
 
     return A.Compose(Aug + W)
+
+def get_val_transforms():
+    return A.Compose([
+        A.Normalize(p=1.0),
+    ])

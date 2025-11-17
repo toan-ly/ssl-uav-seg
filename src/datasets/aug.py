@@ -4,7 +4,7 @@ from monai.transforms import (
 )
 from .uavid_labels import rgb_to_cls
 from .albu_wrapper import AlbumentationsD
-from .albu_aug_helper import get_weather_transforms
+from .albu_aug_helper import get_weather_transforms, get_val_transforms
 
 def train_transforms(patch_size=512, rain=False, sunny=False, snow=False, foggy=False, clahe=True):
     keys = ['image', 'label']
@@ -20,24 +20,15 @@ def train_transforms(patch_size=512, rain=False, sunny=False, snow=False, foggy=
 
     return Compose([
         LoadImageD(keys=keys),
-        AlbumentationsD(keys=keys, aug=albu_weather),
-        # EnsureChannelFirstD(keys=keys),
-        LambdaD(keys=['label'], func=rgb_to_cls),
-
-        # ScaleIntensityRangeD(
-        #     keys=['image'],
-        #     a_min=0.0, a_max=255.0,
-        #     b_min=0.0, b_max=1.0,
-        #     clip=True,
-        # ),
-        
+        EnsureChannelFirstD(keys=keys),
         RandSpatialCropSamplesD(
             keys=keys,
             roi_size=[patch_size, patch_size],
             num_samples=4,
             random_size=False,
         ),
-
+        AlbumentationsD(keys=keys, aug=albu_weather),
+        LambdaD(keys=['label'], func=rgb_to_cls),
         EnsureTypeD(keys=keys),
     ])
 
@@ -48,11 +39,6 @@ def val_transforms():
         LoadImageD(keys=keys),
         EnsureChannelFirstD(keys=keys),
         LambdaD(keys=['label'], func=rgb_to_cls),
-        ScaleIntensityRangeD(
-            keys=['image'],
-            a_min=0.0, a_max=255.0,
-            b_min=0.0, b_max=1.0,
-            clip=True,
-        ),
+        AlbumentationsD(keys=['image'], aug=get_val_transforms()),
         EnsureTypeD(keys=keys),
     ])
