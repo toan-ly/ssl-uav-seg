@@ -31,6 +31,8 @@ def get_weather_transforms(
             ],
             p=0.7,
         ),
+        A.RandomGamma(gamma_limit=(80, 120), p=0.3),
+        A.GaussianBlur(blur_limit=(3,7), p=0.2),
         A.HorizontalFlip(p=0.5),
         # A.VerticalFlip(p=0.5),
         A.RandomRotate90(p=0.5),
