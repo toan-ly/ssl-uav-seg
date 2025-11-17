@@ -66,7 +66,8 @@ def make_loaders(
         shuffle=True, 
         drop_last=True,
         pin_memory=True,
-        num_workers=num_workers
+        num_workers=num_workers,
+        persistent_workers=True,
     )
 
     val_loader = DataLoader(
@@ -74,7 +75,8 @@ def make_loaders(
         batch_size=1, 
         shuffle=False, 
         pin_memory=True,
-        num_workers=num_workers
+        num_workers=num_workers,
+        persistent_workers=True,
     )
 
     return train_loader, val_loader

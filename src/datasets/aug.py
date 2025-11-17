@@ -25,7 +25,7 @@ def train_transforms(patch_size=512, rain=False, sunny=False, snow=False, foggy=
             keys=keys,
             roi_size=[patch_size, patch_size],
             num_samples=4,
-            random_size=False,
+            random_size=True,
         ),
         AlbumentationsD(keys=keys, aug=albu_weather),
         LambdaD(keys=['label'], func=rgb_to_cls),

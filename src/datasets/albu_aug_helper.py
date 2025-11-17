@@ -32,7 +32,7 @@ def get_weather_transforms(
             p=0.7,
         ),
         A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
+        # A.VerticalFlip(p=0.5),
         A.RandomRotate90(p=0.5),
         A.Normalize(p=1.0),
     ])
