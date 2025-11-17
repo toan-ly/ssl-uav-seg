@@ -41,16 +41,17 @@ class Trainer:
         self.lr = lr
         self.scheduler_name = scheduler
 
+        self.cls_weights = None
+        if cls_weights:
+            self.cls_weights = torch.tensor(cls_weights, dtype=torch.float32).to(self.device)
+
         self.criterion = self._get_loss(loss)
         self.optimizer = self._get_optimizer(optimizer_name, lr)
         self.scheduler = None
         if scheduler:
             self.scheduler = self._get_scheduler(scheduler)
 
-        self.cls_weights = None
-        if cls_weights:
-            self.cls_weights = torch.tensor(cls_weights, dtype=torch.float32).to(self.device)
-
+      
         # Early stopping
         self.early_stopping = early_stopping
         self.patience = patience
@@ -128,7 +129,7 @@ class Trainer:
                 roi_size=(512, 512),
                 sw_batch_size=4,
                 predictor=self.model,
-                overlap=0.5,
+                overlap=0.25,
             )
             
             loss = self.criterion(logits, masks)
@@ -270,7 +271,7 @@ class Trainer:
                 include_background=True,
                 to_onehot_y=True,
                 softmax=True,
-                # weight=self.cls_weights
+                weight=self.cls_weights
             )
         }
 

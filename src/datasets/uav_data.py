@@ -49,13 +49,8 @@ def make_loaders(
     )
     val_t = val_transforms()
 
+    train_ds = Dataset(data=train_items, transform=train_t)
     if cache_rate > 0:
-        train_ds = CacheDataset(
-            data=train_items,
-            transform=train_t,
-            cache_rate=cache_rate,
-            num_workers=num_workers,
-        )
         val_ds = CacheDataset(
             data=val_items,
             transform=val_t,
@@ -63,11 +58,24 @@ def make_loaders(
             num_workers=num_workers,
         )
     else:
-        train_ds = Dataset(data=train_items, transform=train_t)
         val_ds = Dataset(data=val_items, transform=val_t)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_ds, batch_size=1, shuffle=False, num_workers=num_workers)
+    train_loader = DataLoader(
+        train_ds, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        drop_last=True,
+        pin_memory=True,
+        num_workers=num_workers
+    )
+
+    val_loader = DataLoader(
+        val_ds, 
+        batch_size=1, 
+        shuffle=False, 
+        pin_memory=True,
+        num_workers=num_workers
+    )
 
     return train_loader, val_loader
 
