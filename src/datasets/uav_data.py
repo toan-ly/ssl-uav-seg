@@ -27,6 +27,11 @@ def make_loaders(
     patch_size=512,
     num_workers=2,
     cache_rate=0.0,
+    rain=False,
+    sunny=False,
+    snow=False,
+    foggy=False,
+    clahe=True,
 ):
     train_dir = Path(data_root) / 'uavid_train'
     val_dir = Path(data_root) / 'uavid_val'
@@ -34,7 +39,14 @@ def make_loaders(
     train_items = get_pairs(train_dir)
     val_items = get_pairs(val_dir)
 
-    train_t = train_transforms(patch_size=patch_size)
+    train_t = train_transforms(
+        patch_size=patch_size,
+        rain=rain,
+        sunny=sunny,
+        snow=snow,
+        foggy=foggy,
+        clahe=clahe,
+    )
     val_t = val_transforms()
 
     if cache_rate > 0:
