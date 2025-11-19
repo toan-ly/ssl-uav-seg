@@ -15,27 +15,28 @@ def get_weather_transforms(
         )
 
     Aug.extend([
-        A.OneOf(
-            [
-                A.HueSaturationValue(
-                    hue_shift_limit=0.1,
-                    sat_shift_limit=0.1,
-                    val_shift_limit=0.1,
-                    p=0.7,
-                ),
-                A.RandomBrightnessContrast(
-                    brightness_limit=0.15,
-                    contrast_limit=0.15,
-                    p=0.9,
-                ),
-            ],
-            p=0.7,
-        ),
-        A.RandomGamma(gamma_limit=(80, 120), p=0.3),
+        # A.OneOf(
+        #     [
+        #         A.HueSaturationValue(
+        #             hue_shift_limit=0.1,
+        #             sat_shift_limit=0.1,
+        #             val_shift_limit=0.1,
+        #             p=0.7,
+        #         ),
+        #         A.RandomBrightnessContrast(
+        #             brightness_limit=0.15,
+        #             contrast_limit=0.15,
+        #             p=0.9,
+        #         ),
+        #     ],
+        #     p=0.7,
+        # ),
+        A.RandomBrightnessContrast(brightness_limit=0.25, contrast_limit=0.25, p=0.25),
+        # A.RandomGamma(gamma_limit=(80, 120), p=0.3),
         A.GaussianBlur(blur_limit=(3,7), p=0.2),
         A.HorizontalFlip(p=0.5),
         # A.VerticalFlip(p=0.5),
-        A.RandomRotate90(p=0.5),
+        # A.RandomRotate90(p=0.5),
         A.Normalize(p=1.0),
     ])
 

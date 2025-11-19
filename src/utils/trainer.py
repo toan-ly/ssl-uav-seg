@@ -12,6 +12,8 @@ from monai.losses import (
 from .utils import *
 from .metric import *
 from monai.inferers import sliding_window_inference
+from .plot import visualize
+
 
 class Trainer:
     def __init__(
@@ -72,6 +74,8 @@ class Trainer:
         self.train_evaluator = Evaluator(num_class=num_classes)
         self.val_evaluator = Evaluator(num_class=num_classes)
 
+        # self.scaler = torch.amp.GradScaler(device=self.device)
+
     def train_one_epoch(self, epoch, epochs):
         self.model.train()
         epoch_loss = 0.0
@@ -83,8 +87,13 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
+            # with torch.amp.autocast(device_type='cuda'):
             logits = self.model(imgs) # [B, num_cls, H, W] 
             loss = self.criterion(logits, masks)
+            # self.scaler.scale(loss).backward()
+            # self.scaler.step(self.optimizer)
+            # self.scaler.update()
+
             loss.backward()
             self.optimizer.step()
 
@@ -101,15 +110,14 @@ class Trainer:
         miou = np.nanmean(self.train_evaluator.Intersection_over_Union())
         oa = np.nanmean(self.train_evaluator.OA())
         f1 = np.nanmean(self.train_evaluator.F1())
+
         eval_dict = {
             'mIoU': miou,
             'OA': oa,
             'f1': f1
         }
 
-
         epoch_loss = epoch_loss / len(self.train_loader.dataset)
-
         self.train_evaluator.reset()
 
         return epoch_loss, eval_dict
@@ -124,14 +132,15 @@ class Trainer:
             imgs = batch['image'].to(self.device) # [B, C, H, W]
             masks = batch['label'].to(self.device) # [B, 1, H, W]
 
+            # with torch.amp.autocast(device_type='cuda'):
             logits = sliding_window_inference(
                 imgs,
                 roi_size=(512, 512),
-                sw_batch_size=2,
+                sw_batch_size=4,
                 predictor=self.model,
                 overlap=0.25,
             )
-            
+        
             loss = self.criterion(logits, masks)
 
             epoch_loss += loss.item() * imgs.size(0)
@@ -146,6 +155,7 @@ class Trainer:
         miou = np.nanmean(self.val_evaluator.Intersection_over_Union())
         oa = np.nanmean(self.val_evaluator.OA())
         f1 = np.nanmean(self.val_evaluator.F1())
+
         eval_dict = {
             'mIoU': miou,
             'OA': oa,
@@ -153,8 +163,8 @@ class Trainer:
         }
 
         epoch_loss = epoch_loss / len(self.val_loader.dataset)
-
         self.val_evaluator.reset()
+
         return epoch_loss, eval_dict
 
     def fit(self, epochs=10, verbose=True, save_model_path=None, save_plots_path=None):
@@ -176,7 +186,7 @@ class Trainer:
                     f'| Train Loss: {train_loss:.4f}, F1: {train_eval["f1"]:.4f}, IoU: {train_eval["mIoU"]:.4f} '
                     f'| Val Loss: {val_loss:.4f}, F1: {val_eval["f1"]:.4f}, IoU: {val_eval["mIoU"]:.4f}'
                 )
-            if verbose and save_plots_path and (epoch + 1) % 5 == 0:
+            if verbose and save_plots_path: #and (epoch + 1) % 5 == 0:
                 visualize(
                     self.model, 
                     self.val_loader, 
@@ -205,6 +215,15 @@ class Trainer:
             if self.scheduler:
                 self.scheduler.step()
 
+            # Save checkpoints
+            if save_model_path:
+                last_path = save_model_path.replace('.pth', '_last.pth')
+                self._save_checkpoint(last_path, epoch+1)
+
+                if val_loss < self.best_loss:
+                    best_path = save_model_path.replace('.pth', '_best.pth')
+                    self._save_checkpoint(best_path, epoch+1)
+
         # Load best weights
         if self.best_weights is not None:
             self.model.load_state_dict(self.best_weights)
@@ -214,8 +233,9 @@ class Trainer:
 
         # Save model
         if save_model_path:
-            self._save_checkpoint(save_model_path)
-            print(f'Model saved to {save_model_path}')
+            final_path = save_model_path
+            torch.save(self.model.state_dict(), final_path)
+            print(f'Model saved to {final_path}')
 
         return self.checkpoint
       
@@ -298,13 +318,18 @@ class Trainer:
             raise ValueError(f'Unknown loss: {name}')
         return criterions[name]()
         
-    def _save_checkpoint(self, path):
+    def _save_checkpoint(self, path, epoch):
         """
         Save model checkpoint including model state, config, and training configs
         """
         model_config = getattr(self.model, 'model_config', None)
         ckpt = {
+            'epoch': epoch,
             'state_dict': self.model.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'scheduler': self.scheduler.state_dict() if self.scheduler else None,
+            'best_iou': self.best_iou,
+            'best_loss': self.best_loss,
             'model_config': model_config,
             'n_params': self.n_params,
             'train_config': {
@@ -312,6 +337,24 @@ class Trainer:
                 'optimizer': self.optimizer_name,
                 'lr': self.lr,
                 'scheduler': self.scheduler_name,
+                'early_stopping': self.early_stopping,
+                'patience': self.patience,
             }
         }
         torch.save(ckpt, path)
+
+    def load_checkpoint(self, path):
+        """
+        Load model checkpoint
+        """
+        ckpt = torch.load(path, map_location=self.device, weights_only=False)
+        self.model.load_state_dict(ckpt['state_dict'])
+        # self.optimizer.load_state_dict(ckpt['optimizer'])
+        # if self.scheduler and ckpt['scheduler']:
+        #     self.scheduler.load_state_dict(ckpt['scheduler'])
+        # self.best_iou = ckpt.get('best_iou', self.best_iou)
+        # self.best_loss = ckpt.get('best_loss', self.best_loss)
+
+        start_epoch = ckpt.get('epoch', 0)
+        print(f'Checkpoint loaded: {path} (starting from epoch {start_epoch})')
+        return start_epoch

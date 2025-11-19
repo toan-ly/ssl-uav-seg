@@ -6,7 +6,7 @@ from .uavid_labels import rgb_to_cls
 from .albu_wrapper import AlbumentationsD
 from .albu_aug_helper import get_weather_transforms, get_val_transforms
 
-def train_transforms(patch_size=512, rain=False, sunny=False, snow=False, foggy=False, clahe=True):
+def train_transforms(patch_size=512, rain=False, sunny=False, snow=False, foggy=False, clahe=False):
     keys = ['image', 'label']
     mode = ('bilinear', 'nearest')
 
@@ -24,7 +24,7 @@ def train_transforms(patch_size=512, rain=False, sunny=False, snow=False, foggy=
         RandSpatialCropSamplesD(
             keys=keys,
             roi_size=[patch_size, patch_size],
-            num_samples=4,
+            num_samples=6,
             random_size=False,
         ),
         AlbumentationsD(keys=keys, aug=albu_weather),

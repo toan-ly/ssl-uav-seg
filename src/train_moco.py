@@ -7,8 +7,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from .builder import MoCoV2
-from ..datasets import UAVMocoDataset, get_uav_img_paths
+from .moco.builder import MoCoV2
+from .datasets import UAVMocoDataset, get_uav_img_paths
 
 def main():
     ROOT = Path(__file__).resolve().parent.parent.parent
@@ -20,7 +20,7 @@ def main():
     img_paths = get_uav_img_paths(DATA_DIR)
     dataset = UAVMocoDataset(img_paths, patch_size=224, moco_version=2)
 
-    batch_size = 64 # 256 in original paper
+    batch_size = 256 # 256 in original paper
     num_workers = 4
 
     loader = DataLoader(
@@ -40,7 +40,7 @@ def main():
         imagenet_init=True,
     ).to(device)
 
-    epochs = 200
+    epochs = 500
     optimizer = torch.optim.SGD(model.parameters(), lr=0.03, momentum=0.9, weight_decay=1e-4)
     criterion = torch.nn.CrossEntropyLoss()
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=0)
