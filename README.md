@@ -33,7 +33,7 @@ Make sure you have `data/` folder
 
 Then run:
 ```bash
-make dataset
+make uavid
 ```
 
 This is going to take a while...
