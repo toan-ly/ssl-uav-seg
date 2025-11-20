@@ -25,33 +25,21 @@ def get_device(device_str=None):
         return torch.device(device_str)
     return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def compute_dice_iou(preds, targets):
-    """
-    Compute Dice coefficient and Intersection over Union (IoU) between predictions and targets.
 
-    Args:
-        preds: Predicted binary masks (B, C, H, W)
-        targets: Ground truth binary masks (B, C, H, W)
-    """
+def compute_iou_sample(pred, target, num_classes=8):
     eps = 1e-7
-    intersection = (preds * targets).sum((1, 2, 3)) # Sum over C, H, W
-    sum_preds_targets = preds.sum((1, 2, 3)) + targets.sum((1, 2, 3))
-    dice = (2. * intersection) / (sum_preds_targets + eps)
-    iou = intersection / (sum_preds_targets - intersection + eps)
-    return dice.mean().item(), iou.mean().item()
+    ious = []
 
-def compute_dice_iou_sample(pred, target):
-    """
-    Compute Dice coefficient and Intersection over Union (IoU) for a single sample.
+    for c in range(num_classes):
+        pred_c = (pred == c).astype(np.uint8)
+        target_c = (target == c).astype(np.uint8)
 
-    Args:
-        pred: Predicted binary mask (C, H, W)
-        target: Ground truth binary mask (C, H, W)
-    """
-    eps = 1e-7
-    intersection = (pred * target).sum()
-    sum_preds_targets = pred.sum() + target.sum()
-    dice = (2. * intersection) / (sum_preds_targets + eps)
-    iou = intersection / (sum_preds_targets - intersection + eps)
-    return dice.item(), iou.item()
+        intersection = (pred_c * target_c).sum()
+        union = pred_c.sum() + target_c.sum() - intersection
 
+        iou = (intersection + eps) / (union + eps)
+        ious.append(iou.item())
+
+    mean_iou = np.mean(ious)
+    return mean_iou
+    

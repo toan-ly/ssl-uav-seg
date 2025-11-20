@@ -12,6 +12,8 @@ from monai.losses import (
 from .utils import *
 from .metric import *
 from monai.inferers import sliding_window_inference
+from .plot import visualize
+
 
 class Trainer:
     def __init__(
@@ -28,6 +30,7 @@ class Trainer:
         scheduler=None,
         cls_weights=None,
         num_classes=8,
+        encoder_lr=None,
     ):
         self.device = device
         self.model = model.to(self.device)
@@ -46,6 +49,7 @@ class Trainer:
             self.cls_weights = torch.tensor(cls_weights, dtype=torch.float32).to(self.device)
 
         self.criterion = self._get_loss(loss)
+        self.encoder_lr = encoder_lr
         self.optimizer = self._get_optimizer(optimizer_name, lr)
         self.scheduler = None
         if scheduler:
@@ -72,6 +76,8 @@ class Trainer:
         self.train_evaluator = Evaluator(num_class=num_classes)
         self.val_evaluator = Evaluator(num_class=num_classes)
 
+        # self.scaler = torch.amp.GradScaler(device=self.device)
+
     def train_one_epoch(self, epoch, epochs):
         self.model.train()
         epoch_loss = 0.0
@@ -83,8 +89,13 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
+            # with torch.amp.autocast(device_type='cuda'):
             logits = self.model(imgs) # [B, num_cls, H, W] 
             loss = self.criterion(logits, masks)
+            # self.scaler.scale(loss).backward()
+            # self.scaler.step(self.optimizer)
+            # self.scaler.update()
+
             loss.backward()
             self.optimizer.step()
 
@@ -101,15 +112,14 @@ class Trainer:
         miou = np.nanmean(self.train_evaluator.Intersection_over_Union())
         oa = np.nanmean(self.train_evaluator.OA())
         f1 = np.nanmean(self.train_evaluator.F1())
+
         eval_dict = {
             'mIoU': miou,
             'OA': oa,
             'f1': f1
         }
 
-
         epoch_loss = epoch_loss / len(self.train_loader.dataset)
-
         self.train_evaluator.reset()
 
         return epoch_loss, eval_dict
@@ -124,14 +134,16 @@ class Trainer:
             imgs = batch['image'].to(self.device) # [B, C, H, W]
             masks = batch['label'].to(self.device) # [B, 1, H, W]
 
+            # with torch.amp.autocast(device_type='cuda'):
             logits = sliding_window_inference(
                 imgs,
                 roi_size=(512, 512),
-                sw_batch_size=2,
+                sw_batch_size=4,
                 predictor=self.model,
                 overlap=0.25,
             )
-            
+            # logits = self.model(imgs) # [B, num_cls, H, W]
+        
             loss = self.criterion(logits, masks)
 
             epoch_loss += loss.item() * imgs.size(0)
@@ -146,6 +158,7 @@ class Trainer:
         miou = np.nanmean(self.val_evaluator.Intersection_over_Union())
         oa = np.nanmean(self.val_evaluator.OA())
         f1 = np.nanmean(self.val_evaluator.F1())
+
         eval_dict = {
             'mIoU': miou,
             'OA': oa,
@@ -153,13 +166,17 @@ class Trainer:
         }
 
         epoch_loss = epoch_loss / len(self.val_loader.dataset)
-
         self.val_evaluator.reset()
+
         return epoch_loss, eval_dict
 
     def fit(self, epochs=10, verbose=True, save_model_path=None, save_plots_path=None):
         start_time = time.time()
+
+        last_epoch = 0
         for epoch in range(epochs):
+            last_epoch = epoch + 1
+
             train_loss, train_eval = self.train_one_epoch(epoch, epochs)
             val_loss, val_eval = self.validate(epoch, epochs)
 
@@ -176,7 +193,7 @@ class Trainer:
                     f'| Train Loss: {train_loss:.4f}, F1: {train_eval["f1"]:.4f}, IoU: {train_eval["mIoU"]:.4f} '
                     f'| Val Loss: {val_loss:.4f}, F1: {val_eval["f1"]:.4f}, IoU: {val_eval["mIoU"]:.4f}'
                 )
-            if verbose and save_plots_path and (epoch + 1) % 5 == 0:
+            if verbose and save_plots_path: #and (epoch + 1) % 5 == 0:
                 visualize(
                     self.model, 
                     self.val_loader, 
@@ -188,10 +205,12 @@ class Trainer:
             if val_eval["mIoU"] > self.best_iou:
                 self.best_iou = val_eval["mIoU"]
 
+            is_best = val_loss < self.best_loss
             # Early stopping
             if self.early_stopping:
-                if val_loss < self.best_loss:
+                if is_best:
                     self.best_loss = val_loss
+                    self.best_iou = val_eval["mIoU"]
                     self.epochs_no_improve = 0
                     self.best_weights = self.model.state_dict()
                 else:
@@ -205,6 +224,16 @@ class Trainer:
             if self.scheduler:
                 self.scheduler.step()
 
+            # Save checkpoints
+            if save_model_path:
+                last_path = save_model_path.replace('.pth', '_last.pth')
+                self._save_checkpoint(last_path, epoch+1)
+
+                if is_best:
+                    best_path = save_model_path.replace('.pth', '_best.pth')
+                    self._save_checkpoint(best_path, epoch+1)
+                    print(f'Saved best model to {best_path}')
+
         # Load best weights
         if self.best_weights is not None:
             self.model.load_state_dict(self.best_weights)
@@ -214,18 +243,35 @@ class Trainer:
 
         # Save model
         if save_model_path:
-            self._save_checkpoint(save_model_path)
-            print(f'Model saved to {save_model_path}')
+            final_path = save_model_path
+            self._save_checkpoint(final_path, last_epoch)
+            print(f'Model saved to {final_path}')
 
         return self.checkpoint
       
     def _get_optimizer(self, optim_name='adamw', lr=1e-4, weight_decay=1e-2):
+        def setup_encoder():
+            if self.encoder_lr and hasattr(self.model, 'encoder'):
+                encoder_params = list(self.model.encoder.parameters())
+                decoder_params = [
+                    p for n, p in self.model.named_parameters() 
+                    if not n.startswith('encoder.')
+                ]
+                return [
+                    {'params': encoder_params, 'lr': self.encoder_lr, 'weight_decay': weight_decay},
+                    {'params': decoder_params, 'lr': lr, 'weight_decay': weight_decay}
+                ]
+            else:
+                return self.model.parameters()
+        
+        params = setup_encoder()
+
         if optim_name == 'adam':
-            return optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+            return optim.Adam(params, lr=lr, weight_decay=weight_decay)
         if optim_name == 'adamw':
-            return optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+            return optim.AdamW(params, lr=lr, weight_decay=weight_decay)
         if optim_name == 'sgd':
-            return optim.SGD(self.model.parameters(), lr=lr, momentum=0.9)
+            return optim.SGD(params, lr=lr, momentum=0.9)
         raise ValueError(f'Unknown optimizer: {optim_name}')    
 
     def _get_scheduler(self, scheduler_name='cosine'):
@@ -298,13 +344,18 @@ class Trainer:
             raise ValueError(f'Unknown loss: {name}')
         return criterions[name]()
         
-    def _save_checkpoint(self, path):
+    def _save_checkpoint(self, path, epoch):
         """
         Save model checkpoint including model state, config, and training configs
         """
         model_config = getattr(self.model, 'model_config', None)
         ckpt = {
+            'epoch': epoch,
             'state_dict': self.model.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'scheduler': self.scheduler.state_dict() if self.scheduler else None,
+            'best_iou': self.best_iou,
+            'best_loss': self.best_loss,
             'model_config': model_config,
             'n_params': self.n_params,
             'train_config': {
@@ -312,6 +363,24 @@ class Trainer:
                 'optimizer': self.optimizer_name,
                 'lr': self.lr,
                 'scheduler': self.scheduler_name,
+                'early_stopping': self.early_stopping,
+                'patience': self.patience,
             }
         }
         torch.save(ckpt, path)
+
+    def load_checkpoint(self, path):
+        """
+        Load model checkpoint
+        """
+        ckpt = torch.load(path, map_location=self.device, weights_only=False)
+        self.model.load_state_dict(ckpt['state_dict'])
+        # self.optimizer.load_state_dict(ckpt['optimizer'])
+        # if self.scheduler and ckpt['scheduler']:
+        #     self.scheduler.load_state_dict(ckpt['scheduler'])
+        # self.best_iou = ckpt.get('best_iou', self.best_iou)
+        # self.best_loss = ckpt.get('best_loss', self.best_loss)
+
+        start_epoch = ckpt.get('epoch', 0)
+        print(f'Checkpoint loaded: {path} (starting from epoch {start_epoch})')
+        return start_epoch

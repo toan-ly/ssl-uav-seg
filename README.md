@@ -3,7 +3,7 @@
 ## Env setup
 We're using `uv` (recommended)
 
-For MacOS, run:
+For MacOS/Linux, run:
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
@@ -33,7 +33,7 @@ Make sure you have `data/` folder
 
 Then run:
 ```bash
-make dataset
+make uavid
 ```
 
 This is going to take a while...

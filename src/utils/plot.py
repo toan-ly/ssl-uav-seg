@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import os
 import torch
-from .utils import compute_dice_iou_sample
+from .utils import compute_iou_sample
+import numpy as np
 
 def plot_loss(loss_df, save_dir):
     """
@@ -48,6 +49,7 @@ def visualize(model, loader, epoch, save_path=None, num_samples=3, device='cpu')
     """
     model.eval()
     imgs, masks, preds = [], [], []
+    count = 0
     for batch in loader:
         img = batch['image'].to(device)
         mask = batch['label'].to(device)
@@ -55,36 +57,47 @@ def visualize(model, loader, epoch, save_path=None, num_samples=3, device='cpu')
         logits = model(img)
         pred = torch.argmax(logits, dim=1, keepdim=True)
 
+        img = img.as_tensor() if hasattr(img, 'as_tensor') else img
+        mask = mask.as_tensor() if hasattr(mask, 'as_tensor') else mask
+        pred = pred.as_tensor() if hasattr(pred, 'as_tensor') else pred
+
         imgs.append(img.cpu())
         masks.append(mask.cpu())
         preds.append(pred.cpu())
-        if len(imgs) * img.size(0) >= num_samples:
+
+        count += img.size(0)
+        if count >= num_samples:
             break
 
     imgs = torch.cat(imgs, dim=0)[:num_samples]
     masks = torch.cat(masks, dim=0)[:num_samples]
     preds = torch.cat(preds, dim=0)[:num_samples]
 
-    fig, axes = plt.subplots(num_samples, 3, figsize=(10, 4 * num_samples))
+    fig, axes = plt.subplots(num_samples, 3, figsize=(16, 4 * num_samples))
     for i in range(num_samples):
         img = imgs[i].permute(1, 2, 0).numpy()
-        if img.max() > 1:
-            img = img / 255.0  # Normalize for visualization
+
+        im_min, im_max = img.min(), img.max()
+        if im_max > im_min:
+            img = (img - im_min) / (im_max - im_min)
 
         pred = preds[i].squeeze().numpy()
         mask = masks[i].squeeze().numpy()
 
-        _, iou = compute_dice_iou_sample(pred, mask)
+        iou = compute_iou_sample(pred, mask)
 
+        img = np.rot90(img, k=-1)
         axes[i, 0].imshow(img)
         axes[i, 0].set_title('Input')
         axes[i, 0].axis('off')
 
-        axes[i, 1].imshow(mask, cmap='gray')
+        mask = np.rot90(mask, k=-1)
+        axes[i, 1].imshow(mask)
         axes[i, 1].set_title('GT')
         axes[i, 1].axis('off')
 
-        axes[i, 2].imshow(pred, cmap='gray')
+        pred = np.rot90(pred, k=-1)
+        axes[i, 2].imshow(pred)
         axes[i, 2].set_title(f'Pred (IoU: {iou:.2f})')
         axes[i, 2].axis('off')
 
@@ -92,6 +105,7 @@ def visualize(model, loader, epoch, save_path=None, num_samples=3, device='cpu')
     plt.tight_layout()
     # plt.show()
     if save_path:
+        os.makedirs(save_path, exist_ok=True)
         save_path = os.path.join(save_path, f'epoch_{epoch+1}.png')
         plt.savefig(save_path, bbox_inches='tight')
     plt.close(fig)
