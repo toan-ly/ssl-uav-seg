@@ -85,7 +85,8 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-
+copy_paste.ipynb
+copy_paste_inherit.ipynb
 # IPython
 profile_default/
 ipython_config.py
