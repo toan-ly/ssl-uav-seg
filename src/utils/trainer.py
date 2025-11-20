@@ -30,6 +30,7 @@ class Trainer:
         scheduler=None,
         cls_weights=None,
         num_classes=8,
+        encoder_lr=None,
     ):
         self.device = device
         self.model = model.to(self.device)
@@ -48,6 +49,7 @@ class Trainer:
             self.cls_weights = torch.tensor(cls_weights, dtype=torch.float32).to(self.device)
 
         self.criterion = self._get_loss(loss)
+        self.encoder_lr = encoder_lr
         self.optimizer = self._get_optimizer(optimizer_name, lr)
         self.scheduler = None
         if scheduler:
@@ -241,12 +243,28 @@ class Trainer:
         return self.checkpoint
       
     def _get_optimizer(self, optim_name='adamw', lr=1e-4, weight_decay=1e-2):
+        def setup_encoder():
+            if self.encoder_lr and hasattr(self.model, 'encoder'):
+                encoder_params = list(self.model.encoder.parameters())
+                decoder_params = [
+                    p for n, p in self.model.named_parameters() 
+                    if not n.startswith('encoder.')
+                ]
+                return [
+                    {'params': encoder_params, 'lr': self.encoder_lr},
+                    {'params': decoder_params, 'lr': lr}
+                ]
+            else:
+                return self.model.parameters()
+        
+        params = setup_encoder()
+
         if optim_name == 'adam':
-            return optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+            return optim.Adam(params, lr=lr, weight_decay=weight_decay)
         if optim_name == 'adamw':
-            return optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+            return optim.AdamW(params, lr=lr, weight_decay=weight_decay)
         if optim_name == 'sgd':
-            return optim.SGD(self.model.parameters(), lr=lr, momentum=0.9)
+            return optim.SGD(params, lr=lr, momentum=0.9)
         raise ValueError(f'Unknown optimizer: {optim_name}')    
 
     def _get_scheduler(self, scheduler_name='cosine'):
