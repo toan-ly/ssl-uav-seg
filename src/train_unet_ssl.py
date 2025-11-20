@@ -87,7 +87,9 @@ trainer_1.fit(
     save_plots_path="figures/unet_ssl_phase1"
 )
 
-phase1_best = "weights/unet_resnet50_ssl_phase1_last.pth"
+phase1_best = "weights/unet_resnet50_ssl_phase_last.pth"
+
+# phase1_best = "weights/unet_resnet50_ssl_phase2_last.pth"
 if Path(phase1_best).exists():
     trainer_1.load_checkpoint(phase1_best)
     model = trainer_1.model

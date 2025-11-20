@@ -172,7 +172,11 @@ class Trainer:
 
     def fit(self, epochs=10, verbose=True, save_model_path=None, save_plots_path=None):
         start_time = time.time()
+
+        last_epoch = 0
         for epoch in range(epochs):
+            last_epoch = epoch + 1
+
             train_loss, train_eval = self.train_one_epoch(epoch, epochs)
             val_loss, val_eval = self.validate(epoch, epochs)
 
@@ -201,10 +205,12 @@ class Trainer:
             if val_eval["mIoU"] > self.best_iou:
                 self.best_iou = val_eval["mIoU"]
 
+            is_best = val_loss < self.best_loss
             # Early stopping
             if self.early_stopping:
-                if val_loss < self.best_loss:
+                if is_best:
                     self.best_loss = val_loss
+                    self.best_iou = val_eval["mIoU"]
                     self.epochs_no_improve = 0
                     self.best_weights = self.model.state_dict()
                 else:
@@ -223,9 +229,10 @@ class Trainer:
                 last_path = save_model_path.replace('.pth', '_last.pth')
                 self._save_checkpoint(last_path, epoch+1)
 
-                if val_loss < self.best_loss:
+                if is_best:
                     best_path = save_model_path.replace('.pth', '_best.pth')
                     self._save_checkpoint(best_path, epoch+1)
+                    print(f'Saved best model to {best_path}')
 
         # Load best weights
         if self.best_weights is not None:
@@ -237,7 +244,7 @@ class Trainer:
         # Save model
         if save_model_path:
             final_path = save_model_path
-            torch.save(self.model.state_dict(), final_path)
+            self._save_checkpoint(final_path, last_epoch)
             print(f'Model saved to {final_path}')
 
         return self.checkpoint
@@ -251,8 +258,8 @@ class Trainer:
                     if not n.startswith('encoder.')
                 ]
                 return [
-                    {'params': encoder_params, 'lr': self.encoder_lr},
-                    {'params': decoder_params, 'lr': lr}
+                    {'params': encoder_params, 'lr': self.encoder_lr, 'weight_decay': weight_decay},
+                    {'params': decoder_params, 'lr': lr, 'weight_decay': weight_decay}
                 ]
             else:
                 return self.model.parameters()

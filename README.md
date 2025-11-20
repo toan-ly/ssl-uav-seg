@@ -3,7 +3,7 @@
 ## Env setup
 We're using `uv` (recommended)
 
-For MacOS, run:
+For MacOS/Linux, run:
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```

@@ -3,12 +3,11 @@ from monai.transforms import (
     EnsureTypeD, LambdaD, RandSpatialCropSamplesD
 )
 from .uavid_labels import rgb_to_cls
-from .albu_wrapper import AlbumentationsD
+from .albu_wrapper import AlbumentationsD # get albu wrapper
 from .albu_aug_helper import get_weather_transforms, get_val_transforms
 
 def train_transforms(patch_size=512, rain=False, sunny=False, snow=False, foggy=False, clahe=False):
     keys = ['image', 'label']
-    mode = ('bilinear', 'nearest')
 
     albu_weather = get_weather_transforms(
         rain=rain,
