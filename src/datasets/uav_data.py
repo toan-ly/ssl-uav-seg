@@ -31,7 +31,7 @@ def make_loaders(
     sunny=False,
     snow=False,
     foggy=False,
-    clahe=True,
+    clahe=False,
 ):
     train_dir = Path(data_root) / 'uavid_train'
     val_dir = Path(data_root) / 'uavid_val'

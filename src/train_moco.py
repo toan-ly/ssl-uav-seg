@@ -11,14 +11,14 @@ from .moco.builder import MoCoV2
 from .datasets import UAVMocoDataset, get_uav_img_paths
 
 def main():
-    ROOT = Path(__file__).resolve().parent.parent.parent
-    DATA_DIR = ROOT / 'data' / 'UAVid'
+    ROOT = Path(__file__).resolve().parent.parent
+    DATA_DIR = ROOT / 'data'
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f'Using device: {device}')
 
     img_paths = get_uav_img_paths(DATA_DIR)
-    dataset = UAVMocoDataset(img_paths, patch_size=224, moco_version=2)
+    dataset = UAVMocoDataset(img_paths, patch_size=256, moco_version=2)
 
     batch_size = 256 # 256 in original paper
     num_workers = 4

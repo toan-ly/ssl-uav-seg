@@ -140,6 +140,7 @@ class Trainer:
                 predictor=self.model,
                 overlap=0.25,
             )
+            # logits = self.model(imgs) # [B, num_cls, H, W]
         
             loss = self.criterion(logits, masks)
 

@@ -36,7 +36,10 @@ train_loader, val_loader = make_loaders(
     batch_size=8,
     patch_size=512,
     num_workers=4,
+    clahe=True,
 )
+
+weights_cls = [2, 1, 1, 1, 1, 3, 3, 5]
 
 trainer = Trainer(
     model=model,
@@ -45,13 +48,14 @@ trainer = Trainer(
     device=DEVICE,  
     loss='dicece',
     optimizer_name='adamw',
-    lr=1e-3,
+    lr=4e-4,
     early_stopping=True,
     patience=5,
     scheduler='cosine',
-    cls_weights=None,
+    cls_weights=weights_cls,
     num_classes=NUM_CLASSES,
 )
+
 
 start_epoch = 0
 checkpoint_path = "weights/unet_resnet50_base_last.pth"
@@ -64,5 +68,5 @@ trainer.fit(
     epochs=100, 
     verbose=True, 
     save_model_path="weights/unet_resnet50_base.pth", 
-    save_plots_path="figures"
+    save_plots_path="figures/unet_base"
 )

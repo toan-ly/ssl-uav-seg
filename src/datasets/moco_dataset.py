@@ -35,14 +35,30 @@ class GaussianBlur:
         x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
         return x
 
-def get_uav_img_paths(data_root='../../data/UAVid/'):
+def get_uav_img_paths(data_root='../../data/'):
     data_root = Path(data_root)
 
-    data_folder = ['uavid_train', 'uavid_val']
+    uav_root = data_root / 'UAVid'
+    if not uav_root.exists():
+        raise FileNotFoundError(f'UAVid dataset not found in {uav_root}')
+    uav_folders = ['uavid_train', 'uavid_val']
     img_paths = []
-    for folder in data_folder:
-        im_paths = sorted(glob(str(data_root / folder / 'seq*' / 'Images' / '*.png')))
-        img_paths.extend(im_paths)
+    for folder in uav_folders:
+        paths = sorted(glob(str(uav_root / folder / 'seq*' / 'Images' / '*.png')))
+        img_paths.extend(paths)
+
+    udd_root = data_root / 'UDD'
+    if not udd_root.exists():
+        raise FileNotFoundError(f'UDD dataset not found in {udd_root}')
+    paths = sorted(glob(str(udd_root / '*.JPG')))
+    img_paths.extend(paths)
+
+    semantic_drone = data_root / 'semantic_drone' / 'images'
+    if not semantic_drone.exists():
+        raise FileNotFoundError(f'Semantic Drone dataset not found in {semantic_drone}')
+    paths = sorted(glob(str(semantic_drone / '*.jpg')))
+    img_paths.extend(paths)
+
     
     print(f'Total {len(img_paths)} images found for MoCo training')
     return img_paths
