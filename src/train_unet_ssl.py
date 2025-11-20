@@ -27,7 +27,7 @@ model = smp.Unet(
     classes=NUM_CLASSES,
 ).to(DEVICE)
 
-ssl_weight_path = ROOT / 'weights' / 'ssl' / 'moco_v2_resnet50_100.pth'
+ssl_weight_path = ROOT / 'weights' / 'ssl' / 'moco_v2_resnet50_55_best.pth'
 if not ssl_weight_path.exists():
     raise FileNotFoundError(f'SSL weights not found at {ssl_weight_path}')
 checkpoint = torch.load(ssl_weight_path, map_location=DEVICE)
@@ -65,7 +65,7 @@ trainer_1 = Trainer(
     optimizer_name='adamw',
     lr=4e-4,
     early_stopping=True,
-    patience=5,
+    patience=2,
     scheduler='cosine',
     cls_weights=weights_cls,
     num_classes=NUM_CLASSES,
@@ -87,9 +87,8 @@ trainer_1.fit(
     save_plots_path="figures/unet_ssl_phase1"
 )
 
-phase1_best = "weights/unet_resnet50_ssl_phase_last.pth"
+phase1_best = "weights/unet_resnet50_ssl_phase1_best.pth"
 
-# phase1_best = "weights/unet_resnet50_ssl_phase2_last.pth"
 if Path(phase1_best).exists():
     trainer_1.load_checkpoint(phase1_best)
     model = trainer_1.model

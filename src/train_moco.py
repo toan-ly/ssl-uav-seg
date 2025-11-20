@@ -34,14 +34,14 @@ def main():
 
     model = MoCoV2(
         dim=128,
-        K=65536,
+        K=4096, # 65536 in original paper
         m=0.999,
         T=0.07,
         imagenet_init=True,
     ).to(device)
 
     epochs = 200
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
     criterion = torch.nn.CrossEntropyLoss()
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=0)
 

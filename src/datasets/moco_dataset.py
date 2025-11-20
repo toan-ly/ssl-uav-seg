@@ -41,7 +41,7 @@ def get_uav_img_paths(data_root='../../data/'):
     uav_root = data_root / 'UAVid'
     if not uav_root.exists():
         raise FileNotFoundError(f'UAVid dataset not found in {uav_root}')
-    uav_folders = ['uavid_train', 'uavid_val']
+    uav_folders = ['uavid_train']
     img_paths = []
     for folder in uav_folders:
         paths = sorted(glob(str(uav_root / folder / 'seq*' / 'Images' / '*.png')))
@@ -66,7 +66,7 @@ def get_uav_img_paths(data_root='../../data/'):
 def get_moco_transform(patch_size=224, version=2):
     if version == 2:
         return T.Compose([
-            T.RandomResizedCrop(patch_size, scale=(0.2, 1.0)),
+            T.RandomResizedCrop(patch_size, scale=(0.5, 1.0)),
             T.RandomApply([T.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
             T.RandomGrayscale(p=0.2),
             T.RandomApply([GaussianBlur([0.1, 2.0])], p=0.5),
