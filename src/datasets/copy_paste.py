@@ -47,7 +47,7 @@ ID2COLOR = {idx: rgb for idx, rgb in enumerate(UAVID_COLORMAP)}
 class CopyPaste(A.DualTransform):
     """Custom Copy-Paste augmentation inherits from Albumentations.DualTransform."""
     
-    def __init__(self, data, num_paste=50, paste_ratio=None, instance_per_cls=10, 
+    def __init__(self, data, num_paste=50, paste_ratio=UAVID_PASTE_RATIO, instance_per_cls=10, 
                  pool_samples=20, seed=42, always_apply=True, p=1.0):
         '''
         Args:

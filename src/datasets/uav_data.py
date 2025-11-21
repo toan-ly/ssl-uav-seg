@@ -32,6 +32,7 @@ def make_loaders(
     snow=False,
     foggy=False,
     clahe=False,
+    copy_paste=False,
 ):
     train_dir = Path(data_root) / 'uavid_train'
     val_dir = Path(data_root) / 'uavid_val'
@@ -46,6 +47,8 @@ def make_loaders(
         snow=snow,
         foggy=foggy,
         clahe=clahe,
+        copy_paste=copy_paste,
+        data_pairs=train_items,
     )
     val_t = val_transforms()
 

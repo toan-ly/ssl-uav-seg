@@ -45,7 +45,7 @@ train_loader, val_loader = make_loaders(
     batch_size=8,
     patch_size=512,
     num_workers=4,
-    clahe=True,
+    clahe=False,
 )
 
 weights_cls = [2, 1, 1, 1, 1, 3, 3, 5]
@@ -72,7 +72,7 @@ trainer_1 = Trainer(
     encoder_lr=None,
 )
 
-print('=== Starting Phase 1 Training ===')
+print('Starting Phase 1 Training...')
 start_epoch = 0
 checkpoint_path = "weights/unet_resnet50_ssl_phase1.pth"
 if Path(checkpoint_path).exists():
@@ -116,7 +116,7 @@ trainer_2 = Trainer(
     encoder_lr=1e-4,
 )
 
-print('=== Starting Phase 2 Training ===')
+print('Starting Phase 2 Training...')
 start_epoch = 0
 if Path(phase1_best).exists():
     start_epoch = trainer_2.load_checkpoint(phase1_best)

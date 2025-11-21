@@ -6,6 +6,7 @@ def get_weather_transforms(
     snow=False,
     foggy=False,
     clahe=False,
+    copy_paste=None,
 ):
     Aug = []
 
@@ -34,11 +35,13 @@ def get_weather_transforms(
         # ),
         A.RandomBrightnessContrast(brightness_limit=0.15, contrast_limit=0.15, p=0.2),
         # A.RandomGamma(gamma_limit=(80, 120), p=0.3),
-        # A.GaussianBlur(blur_limit=(3,7), p=0.2),
+        # A.GaussianBlur(blur_limit=(3,5), p=0.2),
         # A.VerticalFlip(p=0.5),
         # A.RandomRotate90(p=0.5),
-        A.Normalize(p=1.0),
     ])
+
+    if copy_paste:
+        Aug.append(copy_paste)
 
     W = []
     if rain:
@@ -85,10 +88,9 @@ def get_weather_transforms(
             )
         )
 
-    return A.Compose(
-        Aug + W,
-
-    )
+    Aug.extend(W)
+    Aug.append(A.Normalize(p=1.0))
+    return A.Compose(Aug)
 
 def get_val_transforms():
     return A.Compose([
