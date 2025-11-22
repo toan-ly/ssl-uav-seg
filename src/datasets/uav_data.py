@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 from glob import glob
 
+import time
 import torch
 
 from monai.data import DataLoader, CacheDataset, Dataset
@@ -86,7 +87,10 @@ def make_loaders(
 
 if __name__ == '__main__':
     DATA_DIR = Path(__file__).resolve().parent.parent.parent / 'data' / 'UAVid'
+    
+    start_time = time.time()
     train_loader, val_loader = make_loaders(DATA_DIR, cache_rate=0.0)
+
     for batch in train_loader:
         print(batch['image'].shape, batch['label'].shape)
         unique_cls = torch.unique(batch['label'])
@@ -97,4 +101,23 @@ if __name__ == '__main__':
         unique_cls = torch.unique(batch['label'])
         print('Unique classes in labels:', unique_cls)
         break
+    end_time = time.time()
+    print(f'Data loading time without Copy-Paste: {end_time - start_time:.2f} seconds')
+
+    start_time = time.time()
+    train_loader, val_loader = make_loaders(DATA_DIR, cache_rate=0.0, copy_paste=True)
+
+    for batch in train_loader:
+        print(batch['image'].shape, batch['label'].shape)
+        unique_cls = torch.unique(batch['label'])
+        print('Unique classes in labels:', unique_cls)
+        break
+
+    for batch in val_loader:
+        print(batch['image'].shape, batch['label'].shape)
+        unique_cls = torch.unique(batch['label'])
+        print('Unique classes in labels:', unique_cls)
+        break
+    end_time = time.time()
+    print(f'Data loading time with Copy-Paste: {end_time - start_time:.2f} seconds')
 

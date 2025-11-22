@@ -5,7 +5,7 @@ def create_unet(
     num_classes: int = 8, 
     in_channels: int = 3,
     encoder_name: str = "resnet50",
-    encoder_weights: str = "imagenet",
+    encoder_weights: str | None = "imagenet",
 ):
     return smp.Unet(
         encoder_name=encoder_name,

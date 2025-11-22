@@ -11,9 +11,12 @@ import random
 def _get_cp_transform(data_pairs):
     return CopyPaste(
         data=random.sample(data_pairs, 50),
-        num_paste=50,
+        paste_ratio=[0, 0, 0, 0, 0, 0.2, 0.2, 0.3],
+        num_paste=20,
         instance_per_cls=5,
-        pool_samples=20,
+        pool_samples=10,
+        always_apply=False,
+        p=0.5,
     )
     
 def train_transforms(

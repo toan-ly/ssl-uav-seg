@@ -27,7 +27,7 @@ model = smp.Unet(
     classes=NUM_CLASSES,
 ).to(DEVICE)
 
-ssl_weight_path = ROOT / 'weights' / 'ssl' / 'moco_v2_resnet50_55_best.pth'
+ssl_weight_path = ROOT / 'weights' / 'ssl_mocov2' / 'moco_v2_resnet50_55_best.pth'
 if not ssl_weight_path.exists():
     raise FileNotFoundError(f'SSL weights not found at {ssl_weight_path}')
 checkpoint = torch.load(ssl_weight_path, map_location=DEVICE)
