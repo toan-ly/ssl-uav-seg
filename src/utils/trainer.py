@@ -193,19 +193,19 @@ class Trainer:
                     f'| Train Loss: {train_loss:.4f}, F1: {train_eval["f1"]:.4f}, IoU: {train_eval["mIoU"]:.4f} '
                     f'| Val Loss: {val_loss:.4f}, F1: {val_eval["f1"]:.4f}, IoU: {val_eval["mIoU"]:.4f}'
                 )
-            if verbose and save_plots_path: #and (epoch + 1) % 5 == 0:
-                visualize(
-                    self.model, 
-                    self.val_loader, 
-                    epoch, 
-                    save_path=save_plots_path, 
-                    num_samples=3, 
-                    device=self.device)
+            # if verbose and save_plots_path: #and (epoch + 1) % 5 == 0:
+            #     visualize(
+            #         self.model, 
+            #         self.val_loader, 
+            #         epoch, 
+            #         save_path=save_plots_path, 
+            #         num_samples=3, 
+            #         device=self.device)
 
             if val_eval["mIoU"] > self.best_iou:
                 self.best_iou = val_eval["mIoU"]
 
-            is_best = val_loss < self.best_loss
+            is_best = val_loss < self.best_loss or val_eval["mIoU"] >= self.best_iou
             # Early stopping
             if self.early_stopping:
                 if is_best:

@@ -20,6 +20,8 @@ from .utils.utils import set_seed
 from .datasets.uav_data import get_pairs
 from .datasets.aug import val_transforms
 
+from glob import glob
+
 UAVID_CLS = [
     'Background clutter', # 0
     'Building',           # 1
@@ -124,6 +126,10 @@ def evaluate(
     print(f'Using device: {device}')
 
     pred_dir = Path(results_dir) / model_name / 'predictions'
+    if pred_dir.exists():
+        print(f'[Skipping] Predictions already exist at {pred_dir}')
+        return
+
     output_dir = Path(results_dir) / model_name / 'figures'
     pred_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -146,63 +152,73 @@ def evaluate(
     model.eval()
 
     evaluator = Evaluator(num_class=num_classes)
+    global_idx = 0
     with torch.no_grad():
-        for batch, pair in tqdm(zip(test_loader, test_pairs), 
-                                total=len(test_loader), 
-                                desc='Evaluating'):
+        for batch in tqdm(test_loader, total=len(test_loader), desc='Evaluating', leave=False):
             images = batch['image'].to(device)
             labels = batch['label'].to(device)
 
             # Sliding window inference on full test image
             logits = sliding_window_inference(
                 images,
-                roi_size=(512, 512),
-                sw_batch_size=4,
+                roi_size=(1024, 1024),
+                sw_batch_size=24,
                 predictor=model,
-                overlap=0.5,
+                overlap=0.125,
             )
-            preds = torch.argmax(logits, dim=1, keepdim=False) # [1, H, W]
-            gt = labels.squeeze(1) # [1, H, W]
 
-            # Compute metrics
+            preds = torch.argmax(logits, dim=1, keepdim=False) # [B, H, W]
+            gt = labels.squeeze(1) # [B, H, W]
+
             for i in range(gt.shape[0]):
+                if global_idx >= len(test_pairs):
+                    break
+
+                # Compute metrics
                 evaluator.add_batch(
                     gt[i].cpu().numpy(), 
                     preds[i].cpu().numpy()
                 )
 
-            im_path = Path(pair['image'])
-            img_name = im_path.stem
+                pair = test_pairs[global_idx]
+                im_path = Path(pair['image'])
+                seq_name = im_path.parts[-3]
+                filename = im_path.stem
+                img_name = f'{seq_name}_{filename}'
 
-            im_np = images[0].detach().cpu().numpy().transpose(1, 2, 0) # [H, W, C]
+                im_np = images[i].detach().cpu().numpy().transpose(1, 2, 0) # [H, W, C]
 
-            im_min, im_max = im_np.min(), im_np.max()
-            if im_max > im_min:
-                im_np = (im_np - im_min) / (im_max - im_min)
+                im_min, im_max = im_np.min(), im_np.max()
+                if im_max > im_min:
+                    im_np = (im_np - im_min) / (im_max - im_min)
 
-            gt_np = gt[0].cpu().numpy().astype(np.uint8) # [H, W]
-            preds_np = preds[0].cpu().numpy().astype(np.uint8) # [H, W]
+                gt_np = gt[i].cpu().numpy().astype(np.uint8) # [H, W]
+                preds_np = preds[i].cpu().numpy().astype(np.uint8) # [H, W]
 
-            pred_rgb = decode_segmap(preds_np) # [H, W, 3]
-            gt_rgb = decode_segmap(gt_np)      # [H, W, 3]
+                pred_rgb = decode_segmap(preds_np) # [H, W, 3]
+                gt_rgb = decode_segmap(gt_np)      # [H, W, 3]
 
-            im_np = np.rot90(im_np, k=-1)
-            gt_rgb = np.rot90(gt_rgb, k=-1)
-            pred_rgb = np.rot90(pred_rgb, k=-1)
+                im_np = np.rot90(im_np, k=-1)
+                gt_rgb = np.rot90(gt_rgb, k=-1)
+                pred_rgb = np.rot90(pred_rgb, k=-1)
 
-            # Save prediction mask
-            plt.imsave(pred_dir / f'{img_name}.png', pred_rgb)
+                # Save prediction mask
+                plt.imsave(pred_dir / f'{img_name}.png', pred_rgb)
 
-            # Save visualization figure
-            plot_results(im_np, gt_rgb, pred_rgb, img_name, output_dir)
+                # Save visualization figure
+                plot_results(im_np, gt_rgb, pred_rgb, img_name, output_dir)
+
+                global_idx += 1
+
+            # break
+
         
         iou_per_class = evaluator.Intersection_over_Union()
         f1_per_class = evaluator.F1()
-        oa_per_class = evaluator.OA()
 
         miou = np.nanmean(iou_per_class)
         mean_f1 = np.nanmean(f1_per_class)
-        oa = np.nanmean(oa_per_class)
+        oa = np.nanmean(evaluator.OA())
 
         print(f"\n[{model_name}] Test mIoU: {miou:.4f}, mean F1: {mean_f1:.4f}, mean OA: {oa:.4f}")
 
@@ -215,7 +231,7 @@ def evaluate(
                     'class_name': UAVID_CLS[cls_id],
                     'IoU': iou_per_class[cls_id],
                     'F1': f1_per_class[cls_id],
-                    'OA': oa_per_class[cls_id],
+                    'OA': np.nan,
                 }
             )
 
@@ -247,18 +263,13 @@ def main():
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     num_classes = 8
 
-    MODEL_NAMES = [
-        "unet_random",
-        "unet_imagenet",
-        "unet_ssl",
-    ]
-
+    MODEL_NAMES = [Path(p).name for p in glob(str(CKPT_DIR / 'unet_*'))]
     MODELS = {model_name: CKPT_DIR / model_name / f'{model_name}_best.pth' for model_name in MODEL_NAMES}
     test_loader, test_pairs = build_test_loader(
         data_root=DATA_ROOT,
         batch_size=1,
         num_workers=4,
-        cache_rate=0.5,
+        cache_rate=1,
     )
 
     for model_name, ckpt_path in MODELS.items():
