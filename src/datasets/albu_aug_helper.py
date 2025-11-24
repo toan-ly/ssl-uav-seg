@@ -10,6 +10,9 @@ def get_weather_transforms(
 ):
     Aug = []
 
+    if copy_paste:
+        Aug.append(copy_paste)
+
     if clahe:
         Aug.append(
             A.CLAHE(clip_limit=4.0, tile_grid_size=(8,8), p=0.5)
@@ -39,9 +42,6 @@ def get_weather_transforms(
         # A.VerticalFlip(p=0.5),
         # A.RandomRotate90(p=0.5),
     ])
-
-    if copy_paste:
-        Aug.append(copy_paste)
 
     W = []
     if rain:
@@ -90,7 +90,7 @@ def get_weather_transforms(
 
     Aug.extend(W)
     Aug.append(A.Normalize(p=1.0))
-    return A.Compose(Aug)
+    return A.Compose(Aug, keypoint_params=A.KeypointParams(format='xy'))
 
 def get_val_transforms():
     return A.Compose([
