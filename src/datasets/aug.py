@@ -16,7 +16,7 @@ def _get_cp_transform(data_pairs):
         instance_per_cls=5,
         pool_samples=20,
         always_apply=True,
-        p=1,
+        p=0.5,
     )
     
 def train_transforms(

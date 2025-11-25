@@ -45,8 +45,6 @@ train_loader, val_loader = make_loaders(
     batch_size=8,
     patch_size=512,
     num_workers=4,
-    clahe=False,
-    copy_paste=True,
 )
 
 weights_cls = [2, 1, 1, 1, 1, 3, 3, 5]
