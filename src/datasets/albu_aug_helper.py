@@ -20,12 +20,21 @@ def get_weather_transforms(
 
     Aug.extend([
         A.HorizontalFlip(p=0.5),
+        A.Affine(
+            translate_percent=0.05,
+            scale=(0.9, 1.1),
+            rotate=10,
+            p=0.0,
+        ),
         A.RandomBrightnessContrast(brightness_limit=0.15, contrast_limit=0.15, p=0.2),
         A.RandomGamma(gamma_limit=(80, 120), p=0.0),
         A.GaussianBlur(blur_limit=(3,5), p=0.0),
+        A.GaussNoise(std_range=(0.05, 0.1), p=0.0),
         A.VerticalFlip(p=0.0),
         A.RandomRotate90(p=0.0),
     ])
+
+
 
     W = []
     if rain:

@@ -6,6 +6,7 @@ from pathlib import Path
 from .datasets.uav_data import make_loaders
 from .utils.trainer import Trainer
 from .utils.utils import set_seed
+import segmentation_models_pytorch as smp
 
 set_seed(42)
 
@@ -19,11 +20,20 @@ print(f'Using device: {DEVICE}')
 NUM_CLASSES = 8
 IN_CHANNELS = 3
 
-model = create_unet(
-    num_classes=NUM_CLASSES,
-    in_channels=IN_CHANNELS,
+# model = smp.Unet(
+#     encoder_name="resnet50",
+#     encoder_weights="imagenet",
+#     in_channels=IN_CHANNELS,
+#     classes=NUM_CLASSES,
+# ).to(DEVICE)
+
+model = smp.UnetPlusPlus(
     encoder_name="resnet50",
     encoder_weights="imagenet", # imagenet pretrain
+    classes=NUM_CLASSES,  # num_classes for UNet
+    in_channels=IN_CHANNELS,
+    encoder_depth=4,
+    decoder_channels=(128, 64, 32, 16)
 ).to(DEVICE)
 
 
@@ -33,7 +43,7 @@ print(f'Number of trainable parameters: {n_params}')
 train_loader, val_loader = make_loaders(
     DATA_DIR, 
     cache_rate=1,
-    batch_size=8,
+    batch_size=4, # 8 for unet
     patch_size=512,
     num_workers=4,
 )

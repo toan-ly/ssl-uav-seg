@@ -13,12 +13,13 @@ import pandas as pd
 from monai.data import CacheDataset, DataLoader, Dataset
 from monai.inferers import sliding_window_inference
 
+import segmentation_models_pytorch as smp
 
-from .models import create_unet
-from .utils.metric import Evaluator
-from .utils.utils import set_seed
-from .datasets.uav_data import get_pairs
-from .datasets.aug import val_transforms
+
+from ..utils.metric import Evaluator
+from ..utils.utils import set_seed
+from ..datasets.uav_data import get_pairs
+from ..datasets.aug import val_transforms
 
 from glob import glob
 
@@ -110,6 +111,41 @@ def plot_results(im, gt_rgb, pred_rgb, im_name, out_path):
     plt.savefig(out_path / f'{im_name}.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
 
+def build_model(model_name: str, num_classes: int, device: str):
+    if model_name.startswith('unetpp'):
+        model = smp.UnetPlusPlus(
+            encoder_name="resnet50",
+            encoder_weights=None,
+            in_channels=3,
+            classes=num_classes,
+            encoder_depth=4,
+            decoder_channels=(128, 64, 32, 16)
+        )
+    elif model_name.startswith('unet'):
+        model = smp.Unet(
+            encoder_name="resnet50",
+            encoder_weights=None,
+            in_channels=3,
+            classes=num_classes,
+        )
+    elif model_name.startswith('deeplabv3p'):
+        model = smp.DeepLabV3Plus(
+            in_channels=3,
+            classes=num_classes,
+            encoder_name="resnet50",
+            encoder_weights=None,
+        )
+    elif model_name.startswith('deeplabv3'):
+        model = smp.DeepLabV3(
+            in_channels=3,
+            classes=num_classes,
+            encoder_name="resnet50",
+            encoder_weights=None,
+        )
+    else:
+        raise ValueError(f'Unknown model name: {model_name}')
+    return model.to(device)
+
 def evaluate(
     model_name: str | Path,
     ckpt_path: str | Path,
@@ -120,6 +156,7 @@ def evaluate(
     test_loader=None,
     test_pairs=None,
 ):
+    model_name = str(model_name)
     device = device if torch.cuda.is_available() else 'cpu'
     print(f'\n=== Evaluating Model: {model_name} ===')
     print(f'Checkpoint: {ckpt_path}')
@@ -141,13 +178,8 @@ def evaluate(
             num_workers=4,
         )
 
-    model = create_unet(
-        num_classes=num_classes,
-        in_channels=3,
-        encoder_name="resnet50",
-        encoder_weights=None,
-    ).to(device)
-
+    # Build model and load weights
+    model = build_model(model_name=model_name, num_classes=num_classes, device=device)
     model = load_model(model, ckpt_path, device)
     model.eval()
 
@@ -161,10 +193,11 @@ def evaluate(
             # Sliding window inference on full test image
             logits = sliding_window_inference(
                 images,
-                roi_size=(1024, 1024),
-                sw_batch_size=24,
+                roi_size=(512, 512),
+                sw_batch_size=64,
                 predictor=model,
-                overlap=0.125,
+                overlap=0.5,
+                mode='gaussian',
             )
 
             preds = torch.argmax(logits, dim=1, keepdim=False) # [B, H, W]
@@ -254,7 +287,7 @@ def evaluate(
 def main():
     set_seed(42)
 
-    ROOT = Path(__file__).resolve().parent.parent
+    ROOT = Path(__file__).resolve().parent.parent.parent
     DATA_ROOT = ROOT / 'data' / 'UAVid'
     RESULTS_DIR = ROOT / 'results'
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -263,11 +296,12 @@ def main():
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     num_classes = 8
 
-    MODEL_NAMES = [Path(p).name for p in glob(str(CKPT_DIR / 'unet_*'))]
+    MODEL_NAMES = [Path(p).name for p in glob(str(CKPT_DIR / 'unet*'))]
+    MODEL_NAMES += [Path(p).name for p in glob(str(CKPT_DIR / 'deeplab*'))]
     MODELS = {model_name: CKPT_DIR / model_name / f'{model_name}_best.pth' for model_name in MODEL_NAMES}
     test_loader, test_pairs = build_test_loader(
         data_root=DATA_ROOT,
-        batch_size=1,
+        batch_size=2,
         num_workers=4,
         cache_rate=1,
     )

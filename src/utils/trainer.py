@@ -138,7 +138,7 @@ class Trainer:
             logits = sliding_window_inference(
                 imgs,
                 roi_size=(512, 512),
-                sw_batch_size=4,
+                sw_batch_size=8,
                 predictor=self.model,
                 overlap=0.25,
             )

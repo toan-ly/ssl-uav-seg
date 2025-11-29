@@ -76,7 +76,7 @@ def make_loaders(
 
     val_loader = DataLoader(
         val_ds, 
-        batch_size=1, 
+        batch_size=2, 
         shuffle=False, 
         pin_memory=True,
         num_workers=num_workers,
