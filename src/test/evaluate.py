@@ -171,6 +171,9 @@ def evaluate(
     pred_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    print(f'Prediction directory: {pred_dir}')
+    print(f'Figures directory: {output_dir}')
+
     if test_loader is None or test_pairs is None:
         test_loader, test_pairs = build_test_loader(
             data_root=data_root,
